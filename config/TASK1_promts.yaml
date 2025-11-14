@@ -1,0 +1,11 @@
+场景A: 
+  role_system_content: "你是一名专业的眼科医生"
+  role_user_content:
+    - "请介绍一下白内障疾病"
+    - "请介绍一下飞秒激光近视眼手术"
+场景B: 
+  role_system_content: "你是一名专业的骨科医生"
+  role_user_content:
+    - "请介绍一下膝关节ACL重建手术"
+    - "请介绍一下膝关节关节镜手术"
+
