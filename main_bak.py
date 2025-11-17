@@ -142,7 +142,7 @@ def convert_json_to_word_with_metadata(json_file_path, output_dir="word_outputs"
 if __name__ == "__main__":
 
     
-    # ensure_pandoc()
+    ensure_pandoc()
 
     ## 任务提示词选择
     '''
