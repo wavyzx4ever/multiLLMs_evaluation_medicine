@@ -11,15 +11,6 @@ import pypandoc
 
 
 
-def ensure_pandoc():
-    try:
-        # 检查pandoc是否可用
-        pypandoc.get_pandoc_version()
-    except OSError:
-        # 如果不可用，则下载
-        pypandoc.download_pandoc()
-
-
 ## 函数封装
 # 访问LLM
 def LLM_request(api_key, base_url, model, scenario_class, messages):
@@ -78,71 +69,80 @@ def markdown_to_word(markdown_text, output_path):
         print(f"✗ 转换失败: {e}")
         return False
 
-def get_LLM_response_from_json(item):
-    """创建包含所有字段的增强版Markdown内容"""
-    
-    scenario_class = item.get('scenario_class', '未知场景')
-    system_prompt = item.get('prompt_role_system', '')
-    user_prompt = item.get('prompt_role_user', '')
-    response_content = item.get('response', '')
-    timestamp = item.get('timestamp', '')
-    
-    # 构建完整的Markdown内容
-    enhanced_content = f"""# {scenario_class}
 
-## 基本信息
+def get_combined_markdown_content(data):
+    """创建包含所有场景的合并Markdown内容"""
+    
+    combined_content = f"""# AI对话记录汇总报告
+
+**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+**总记录数**: {len(data)}
+
+---
+"""
+    
+    for i, item in enumerate(data, 1):
+        scenario_class = item.get('scenario_class', f'场景_{i}')
+        system_prompt = item.get('prompt_role_system', '')
+        user_prompt = item.get('prompt_role_user', '')
+        response_content = item.get('response', '')
+        timestamp = item.get('timestamp', '')
+        
+        # 为每个场景添加分隔符和标题
+        combined_content += f"""
+## {i}. {scenario_class}
+
+### 基本信息
 - **生成时间**: {timestamp}
 - **场景分类**: {scenario_class}
+- **记录编号**: 第{i}条
 
-## 对话设置
+### 对话设置
 **系统角色设定**:
 {system_prompt}
 
 **用户问题**:
 {user_prompt}
 
-## AI回复内容
+### AI回复内容
 {response_content}
 
 ---
-
-*文档生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}*
 """
-    return enhanced_content
-
-def convert_json_to_word_with_metadata(json_file_path, output_dir="word_outputs"):
-    """转换JSON为Word，包含所有元数据"""
     
+    combined_content += f"\n\n*文档生成完成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}*"
+    return combined_content
+
+def convert_json_to_single_word(json_file_path):
+    """将JSON文件的所有内容合并到一个Word文件中"""
+    
+    # 读取JSON文件
     with open(json_file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
-    os.makedirs(output_dir, exist_ok=True)
+    print(f"📁 找到 {len(data)} 条记录")
     
-    for i, item in enumerate(data):
-        scenario_class = item.get('scenario_class', f'场景_{i+1}')
-        
-        # 创建安全的文件名
-        safe_filename = "".join(c for c in scenario_class if c.isalnum() or c in ('_', '-', ' '))
-        safe_filename = safe_filename.replace(' ', '_')[:50]  # 限制文件名长度
-        
-        output_filename = f"{safe_filename}.docx"
-        output_path = os.path.join(output_dir, output_filename)
-        
-        # 创建包含所有信息的Markdown内容
-        markdown_content = get_LLM_response_from_json(item)
-        
-        # 转换为Word
-        if markdown_to_word(markdown_content, output_path):
-            print(f"✓ 已转换: {scenario_class}")
-
-
+    # 生成与JSON文件平行的Word文件路径
+    json_dir = os.path.dirname(json_file_path)
+    json_filename = os.path.basename(json_file_path)
+    word_filename = os.path.splitext(json_filename)[0] + '.docx'
+    output_path = os.path.join(json_dir, word_filename)
+    
+    # 创建合并的Markdown内容
+    combined_markdown = get_combined_markdown_content(data)
+    
+    # 转换为Word
+    if markdown_to_word(combined_markdown, output_path):
+        print(f"✅ 成功生成合并Word文件: {output_path}")
+        return True
+    else:
+        print(f"❌ 生成Word文件失败")
+        return False
 
 
 ## 程序入口
 if __name__ == "__main__":
 
-    
-    # ensure_pandoc()
 
     ## 任务提示词选择
     '''
@@ -193,7 +193,7 @@ if __name__ == "__main__":
     # for model in model_list:
     #     LLM_answers = []
     #     for scenario_class, scenario_config in task_config.items():
-    #         print(f'scenario_class: {scenario_class}')
+    #         # print(f'scenario_class: {scenario_class}')
     #         role_system_content = scenario_config['role_system_content']
     #         role_user_content = scenario_config['role_user_content']
     #         for prompt in role_user_content:
@@ -214,8 +214,8 @@ if __name__ == "__main__":
 
     #             time.sleep(2)
 
-        LLM_results_save(task=target_task, model=model, LLM_answers=LLM_answers)
+    #     LLM_results_save(task=target_task, model=model, LLM_answers=LLM_answers)
 
 
-
-    convert_json_to_word_with_metadata("results/TASK1/task1_qwen-plus.json")
+    ## LLM保存结果到json文件后，转换为word文件
+    convert_json_to_single_word("results/TASK1/task1_qwen-plus.json")
